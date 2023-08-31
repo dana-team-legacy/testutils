@@ -12,30 +12,36 @@ import (
 
 const eventuallyTimeout = 30
 
+// MustRun runs a command and asserts that it must succeed
 func MustRun(cmdln ...string) {
 	mustRunWithTimeout(1, eventuallyTimeout, cmdln...)
 }
 
+// MustRunWithTimeout runs a command with a specified timeout and asserts that it must succeed
 func MustRunWithTimeout(timeout float64, cmdln ...string) {
 	mustRunWithTimeout(1, timeout, cmdln...)
 }
 
+// mustRunWithTimeout runs a command with a specified timeout and asserts that it must succeed
 func mustRunWithTimeout(offset int, timeout float64, cmdln ...string) {
 	EventuallyWithOffset(offset+1, func() error {
 		return TryRun(cmdln...)
 	}, timeout).Should(Succeed(), "Command: %s", cmdln)
 }
 
+// MustNotRun runs a command and asserts that it must not succeed
 func MustNotRun(cmdln ...string) {
 	mustNotRun(1, cmdln...)
 }
 
+// mustNotRun runs a command and asserts that it must not succeed
 func mustNotRun(offset int, cmdln ...string) {
 	ExpectWithOffset(offset+1, func() error {
 		return TryRun(cmdln...)
 	}).ShouldNot(Equal(nil), "Command: %s", cmdln)
 }
 
+// TryRun runs a command and returns an error if the command fails
 func TryRun(cmdln ...string) error {
 	stdout, err := RunCommand(cmdln...)
 	if err != nil {
@@ -49,29 +55,34 @@ func TryRun(cmdln ...string) error {
 	return err
 }
 
+// TryRunQuietly runs a command and returns an error without logging output
 func TryRunQuietly(cmdln ...string) error {
 	_, err := RunCommand(cmdln...)
 	return err
 }
 
+// MustApplyYAML applies YAML content using `kubectl` and asserts success
 func MustApplyYAML(s string) {
 	filename := writeTempFile(s)
 	defer removeFile(filename)
 	MustRun("kubectl apply -f", filename)
 }
 
+// MustNotApplyYAML applies YAML content using `kubectl` and asserts failure
 func MustNotApplyYAML(s string) {
 	filename := writeTempFile(s)
 	defer removeFile(filename)
 	MustNotRun("kubectl apply -f", filename)
 }
 
+// MustApplyYAMLAsUser applies YAML content as a specific user using `kubectl` and asserts success
 func MustApplyYAMLAsUser(s, u string) {
 	filename := writeTempFile(s)
 	defer removeFile(filename)
 	MustRun("kubectl apply -f", filename, "--as", u)
 }
 
+// MustNotApplyYAMLAsUser applies YAML content as a specific user using `kubectl` and asserts failure
 func MustNotApplyYAMLAsUser(s, u string) {
 	filename := writeTempFile(s)
 	defer removeFile(filename)
@@ -103,6 +114,7 @@ func RunCommand(cmdln ...string) (string, error) {
 	return string(stdout), err
 }
 
+// writeTempFile creates a temporary file with the given content and returns its name
 func writeTempFile(cxt string) string {
 	f, err := os.CreateTemp(os.TempDir(), "e2e-test-*.yaml")
 	Expect(err).Should(BeNil())
@@ -111,6 +123,7 @@ func writeTempFile(cxt string) string {
 	return f.Name()
 }
 
+// removeFile removes a file and asserts success
 func removeFile(path string) {
 	Expect(os.Remove(path)).Should(BeNil())
 }
@@ -124,14 +137,21 @@ func removeFile(path string) {
 // See https://onsi.github.io/gomega/#adding-your-own-matchers for details.
 type silencer struct{}
 
+// beQuiet returns a silencer matcher
 func beQuiet() silencer { return silencer{} }
+
+// Match checks if the actual string is empty
 func (_ silencer) Match(actual interface{}) (bool, error) {
 	diffs := actual.(string)
 	return diffs == "", nil
 }
+
+// FailureMessage returns the failure message
 func (_ silencer) FailureMessage(actual interface{}) string {
 	return actual.(string)
 }
+
+// NegatedFailureMessage returns the negated failure message
 func (_ silencer) NegatedFailureMessage(actual interface{}) string {
 	return "!!!! you should not put beQuiet() in a ShouldNot matcher !!!!"
 }
